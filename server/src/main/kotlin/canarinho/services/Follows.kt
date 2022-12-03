@@ -12,18 +12,18 @@ import canarinho.models.User
 
 import canarinho.utils.Response
 
-class QueryResponse(val user: User, val friends: Boolean)
+class FollowsQueryResponse(val user: User, val friends: Boolean)
 
 @Service
 class FollowsService(val db: JdbcTemplate) {
-  fun listFollowers(userId: String): List<QueryResponse> =
+  fun listFollowers(userId: String): List<FollowsQueryResponse> =
     db.query(
       "SELECT u1.*, f.friends FROM Users AS u1, Users AS u2, Follows AS f WHERE f.followed_id = ? AND f.follower_id = u1.id AND f.followed_id = u2.id", userId
     ) {
       response, _ -> queryCallback(response)
     }
 
-  fun listFollowing(userId: String): List<QueryResponse> =
+  fun listFollowing(userId: String): List<FollowsQueryResponse> =
     db.query(
       "SELECT u2.*, f.friends FROM Users AS u1, Users AS u2, Follows AS f WHERE f.follower_id = ? AND f.follower_id = u1.id AND f.followed_id = u2.id", userId
     ) {
@@ -62,7 +62,7 @@ class FollowsService(val db: JdbcTemplate) {
     return Response(200, "Unfollowed")
   }
 
-  private fun queryCallback(response: ResultSet): QueryResponse {
+  private fun queryCallback(response: ResultSet): FollowsQueryResponse {
     val user = User(
       response.getString("id"),
       response.getString("name"),
@@ -70,6 +70,6 @@ class FollowsService(val db: JdbcTemplate) {
       response.getString("password"),
     )
 
-    return QueryResponse(user, response.getString("friends").toBoolean())
+    return FollowsQueryResponse(user, response.getString("friends").toBoolean())
   }
 }
