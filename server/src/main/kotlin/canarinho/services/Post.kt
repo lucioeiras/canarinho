@@ -57,7 +57,7 @@ class PostService(val db: JdbcTemplate) {
 
   fun editPost(postId: String?, content: String): Response {
     if (getPostsById(postId ?: "").isEmpty() == true) {
-      return Response(404, "Post not found")
+      throw Exception("User not found!")
     }
 
     db.update(
@@ -70,7 +70,7 @@ class PostService(val db: JdbcTemplate) {
 
   fun deletePost(postId: String): Response {
     if (getPostsById(postId).isEmpty() == true) {
-      return Response(404, "Post not found")
+      throw Exception("User not found!")
     }
 
     db.update("DELETE FROM Posts WHERE id = ?", postId)

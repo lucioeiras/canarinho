@@ -37,8 +37,12 @@ class PostController(val service: PostService) : Controller {
     @RequestBody body: BodyRequest
   ): ResponseEntity<String> {
     if (body.post != null) {
-      val response = service.createPost(body.post.authorId ?: "", body.post.content)
-		  return ResponseEntity.status(response.status).body(response.message)
+      try {
+        val response = service.createPost(body.post.authorId ?: "", body.post.content)
+		    return ResponseEntity.status(response.status).body(response.message)
+      } catch (e: Exception) {
+        return ResponseEntity.status(404).body(e.message)
+      }
     }
 
     return ResponseEntity.status(500).body("Request Body error")
@@ -49,8 +53,12 @@ class PostController(val service: PostService) : Controller {
 		@PathVariable id: String, @RequestBody body: BodyRequest
 	): ResponseEntity<String> {
     if (body.post != null) {
-      val response = service.editPost(id, body.post.content)
-      return ResponseEntity.status(response.status).body(response.message)
+      try {
+        val response = service.editPost(id, body.post.content)
+        return ResponseEntity.status(response.status).body(response.message)
+      } catch (e: Exception) {
+        return ResponseEntity.status(404).body(e.message)
+      }
     }
 
     return ResponseEntity.status(500).body("Request Body error")
