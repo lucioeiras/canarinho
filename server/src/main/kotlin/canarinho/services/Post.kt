@@ -11,22 +11,20 @@ import java.sql.Timestamp
 import canarinho.models.User
 import canarinho.models.Post
 
-import canarinho.utils.Response
-
 class PostQueryResponse(val post: Post, val user: User)
 
 @Service
 class PostService(val db: JdbcTemplate) {
 	fun getPosts(): List<PostQueryResponse> =
     db.query(
-      "SELECT p.*, u.* FROM Posts AS p, Users AS u WHERE p.author_id = u.id"
+      "SELECT p.*, pr.*, u.email, u.password FROM Users AS u, Posts AS p, Profiles AS pr WHERE p.author_id = pr.id AND pr.id = u.profile_id"
     ) {
       response, _ -> queryCallback(response)
     }
 
   fun getPostsByAuthor(authorId: String): List<PostQueryResponse> =
     db.query(
-      "SELECT p.*, u.* FROM Posts AS p, Users AS u WHERE p.author_id = ? AND u.id = ?",
+      "SELECT p.*, pr.*, u.email, u.password FROM Users AS u, Posts AS p, Profiles AS pr WHERE p.author_id = ? AND pr.id = ? AND pr.id = u.profile_id",
       authorId, authorId
     ) {
       response, _ -> queryCallback(response)
@@ -34,13 +32,13 @@ class PostService(val db: JdbcTemplate) {
 
   fun getPostsById(postId: String): List<PostQueryResponse> =
     db.query(
-      "SELECT p.*, u.* FROM Posts AS p, Users AS u WHERE p.id = ? AND p.author_id = u.id",
+      "SELECT p.*, pr.*, u.email, u.password FROM Posts AS p, Users AS u, Profiles AS pr WHERE p.id = ? AND p.author_id = pr.id AND pr.id = u.profile_id",
       postId
     ) {
       response, _ -> queryCallback(response)
     }
 
-  fun createPost(authorId: String, content: String): Response {
+  fun createPost(authorId: String, content: String): Boolean {
     val id = UUID.randomUUID().toString()
 
     db.update(
@@ -52,12 +50,12 @@ class PostService(val db: JdbcTemplate) {
       Timestamp(System.currentTimeMillis())
     )
 
-    return Response(201, "Post created succesfully")
+    return true
   }
 
-  fun editPost(postId: String?, content: String): Response {
+  fun editPost(postId: String?, content: String): Boolean {
     if (getPostsById(postId ?: "").isEmpty() == true) {
-      throw Exception("User not found!")
+      throw Exception("Post not found!")
     }
 
     db.update(
@@ -65,16 +63,16 @@ class PostService(val db: JdbcTemplate) {
       content, Timestamp(System.currentTimeMillis()), postId
     )
 
-    return Response(204, "Post updated succesfully")
+    return true
   }
 
-  fun deletePost(postId: String): Response {
+  fun deletePost(postId: String): Boolean {
     if (getPostsById(postId).isEmpty() == true) {
-      throw Exception("User not found!")
+      throw Exception("Post not found!")
     }
 
     db.update("DELETE FROM Posts WHERE id = ?", postId)
-    return Response(200, "Post deleted succesfully")
+    return true
   }
 
   private fun queryCallback(response: ResultSet): PostQueryResponse {

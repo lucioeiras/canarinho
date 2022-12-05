@@ -9,16 +9,17 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.http.ResponseEntity
 
 import canarinho.models.Post
 import canarinho.services.PostService
-import canarinho.utils.Response
 import canarinho.interfaces.Controller
 import canarinho.interfaces.BodyRequest
 
 class PostBody(val authorId: String?, val content: String)
 
+@CrossOrigin("http://localhost:5173/")
 @RequestMapping("/post")
 @RestController
 class PostController(val service: PostService) : Controller {
@@ -38,8 +39,8 @@ class PostController(val service: PostService) : Controller {
   ): ResponseEntity<String> {
     if (body.post != null) {
       try {
-        val response = service.createPost(body.post.authorId ?: "", body.post.content)
-		    return ResponseEntity.status(response.status).body(response.message)
+        service.createPost(body.post.authorId ?: "", body.post.content)
+		    return ResponseEntity.status(201).body("Post created succesfully")
       } catch (e: Exception) {
         return ResponseEntity.status(404).body(e.message)
       }
@@ -54,8 +55,8 @@ class PostController(val service: PostService) : Controller {
 	): ResponseEntity<String> {
     if (body.post != null) {
       try {
-        val response = service.editPost(id, body.post.content)
-        return ResponseEntity.status(response.status).body(response.message)
+        service.editPost(id, body.post.content)
+        return ResponseEntity.status(203).body("Post updated succesfully")
       } catch (e: Exception) {
         return ResponseEntity.status(404).body(e.message)
       }
@@ -66,7 +67,7 @@ class PostController(val service: PostService) : Controller {
 
   @DeleteMapping("/{id}")
 	override fun delete(@PathVariable id: String): ResponseEntity<String> {
-    val response = service.deletePost(id)
-    return ResponseEntity.status(response.status).body(response.message)
+    service.deletePost(id)
+    return ResponseEntity.status(204).body("Post created succesfully")
   }
 }

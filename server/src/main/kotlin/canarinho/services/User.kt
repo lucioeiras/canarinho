@@ -12,53 +12,59 @@ import java.sql.ResultSet
 import canarinho.models.User
 import canarinho.models.Follows
 
-import canarinho.utils.Response
-
 class FollowsQueryResponse(val user: User, val friends: Boolean)
 
 @Service
 class UserService(val db: JdbcTemplate) {
 	fun findUsers(): List<User> =
-    db.query("SELECT * FROM Users") {
+    db.query("SELECT p.*, u.email, u.password FROM Users AS u, Profiles AS p WHERE u.profile_id = p.id") {
       response, _ -> userQueryCallback(response)
     }
 
   fun findUserById(id: String): List<User> =
-    db.query("SELECT * FROM Users WHERE id = ?", id) {
+    db.query("SELECT p.*, u.email, u.password FROM Users AS u, Profiles AS p WHERE u.profile_id = p.id AND p.id = ?", id) {
       response, _ -> userQueryCallback(response)
     }
 
-  fun createUser(user: User): Response {
-    val id = user.id ?: UUID.randomUUID().toString()
-
+  fun createUser(user: User): User {
     db.update(
-      "INSERT INTO Users VALUES ( ?, ?, ?, ? )",
-      id, user.name, user.email, encryptPassword(user.password)
+      "INSERT INTO Profiles VALUES ( ?, ? )",
+      user.id, user.name
     )
 
-    return Response(201, "User created succesfully")
+    db.update(
+      "INSERT INTO Users VALUES ( ?, ?, ? )",
+      user.email, encryptPassword(user.password), user.id
+    )
+
+    return findUserById(user.id ?: "")[0]
   }
 
-  fun editUser(id: String?, user: User): Response {
+  fun editUser(id: String?, user: User): User {
     if (findUserById(id ?: "").isEmpty() == true) {
-      return Response(404, "User not found")
+      throw Exception("User not found")
     }
 
     db.update(
-      "UPDATE Users SET name = ?, email = ?, password = ? WHERE id = ?",
-      user.name, user.email, encryptPassword(user.password), id
+      "UPDATE Users SET email = ?, password = ? WHERE profile_id = ?",
+      user.email, encryptPassword(user.password), id
     )
 
-    return Response(204, "User updated succesfully")
+    db.update(
+      "UPDATE Profiles SET name = ? WHERE id = ?",
+      user.name, id
+    )
+
+    return findUserById(id ?: "")[0]
   }
 
-  fun deleteUser(id: String): Response {
+  fun deleteUser(id: String): Boolean {
     if (findUserById(id).isEmpty() == true) {
-      return Response(404, "User not found")
+      throw Exception("User not found")
     }
 
-    db.update("DELETE FROM Users WHERE id = ?", id)
-    return Response(200, "User deleted succesfully")
+    db.update("DELETE FROM Profiles WHERE id = ?", id)
+    return true
   }
 
   private fun encryptPassword(password: String): String =
@@ -66,19 +72,19 @@ class UserService(val db: JdbcTemplate) {
 
   fun listFollowers(userId: String): List<FollowsQueryResponse> =
     db.query(
-      "SELECT u1.*, f.friends FROM Users AS u1, Users AS u2, Follows AS f WHERE f.followed_id = ? AND f.follower_id = u1.id AND f.followed_id = u2.id", userId
+      "SELECT p1.*, u1.email, u1.password, f.friends FROM Users AS u1, Profiles AS p1, Profiles AS p2, Follows AS f WHERE f.followed_id = ? AND f.follower_id = p1.id AND f.followed_id = p2.id AND p1.id = u1.profile_id", userId
     ) {
       response, _ -> followsQueryCallback(response)
     }
 
   fun listFollowing(userId: String): List<FollowsQueryResponse> =
     db.query(
-      "SELECT u2.*, f.friends FROM Users AS u1, Users AS u2, Follows AS f WHERE f.follower_id = ? AND f.follower_id = u1.id AND f.followed_id = u2.id", userId
+      "SELECT p2.*, u2.email, u2.password, f.friends FROM Users AS u2, Profiles AS p1, Profiles AS p2, Follows AS f WHERE f.follower_id = ? AND f.follower_id = p1.id AND f.followed_id = p2.id AND p2.id = u2.profile_id", userId
     ) {
       response, _ -> followsQueryCallback(response)
     }
 
-  fun follow(users: Follows): Response {
+  fun follow(users: Follows): Boolean {
     val user1Followers = listFollowers(users.followerId)
     var isFriends = false
 
@@ -98,16 +104,16 @@ class UserService(val db: JdbcTemplate) {
       users.followerId, users.followedId, isFriends
     )
 
-    return Response(200, "Followed")
+    return true
   }
 
-  fun unfollow(users: Follows): Response {
+  fun unfollow(users: Follows): Boolean {
     db.update(
       "DELETE FROM Follows WHERE follower_id = ? AND followed_id = ?",
       users.followerId, users.followedId
     )
 
-    return Response(200, "Unfollowed")
+    return true
   }
 
   private fun userQueryCallback(response: ResultSet): User = User(
